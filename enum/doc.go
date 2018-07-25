@@ -4,16 +4,16 @@ Package enum simplifies the creation of enumerated types (which Go does not nati
 There are many benefits to defining & using enumerated types in your code
 
  - Enforces compile-time type-safety resulting in more robust code
-	- An enum is a data type as opposed to just using integers, strings, etc.
-	- If symbols are scoped to an enum type, symbol discovery is improved
+   - An enum is a data type as opposed to just using integers, strings, etc.
+   - If symbols are scoped to an enum type, symbol discovery is improved
  - Using enum symbols in code makes the code self-documenting
-	- For example, "var color Color = Color.Red" is better than using an integer (like 1)
+   - For example, "var color Color = Color.Red" is better than using an integer (like 1)
  - Restricts values to small set of legal values
-	- For example, "var color Color = 217" is bad if only Red, Green, & Blue are supported colors
+   - For example, "var color Color = 217" is bad if only Red, Green, & Blue are supported colors
  - Can offer String/Parse conversions
-	 - Useful for command-line arguments, JSON/XML values, output/logging, etc.
+   - Useful for command-line arguments, JSON/XML values, output/logging, etc.
  - Can return complete set of legal values
-	- Useful for showing “menu” of legal set of values to a user or client package
+   - Useful for showing “menu” of legal set of values to a user or client package
 
 Defining an Enumerated Type
 
@@ -41,7 +41,7 @@ To simplify this code even more (and to make using an enum defined in one packag
 another package, I recommend defining a public global variable in your enum-defining package. The EColor variable
 shown above is an example of this. It allows you to write code like this:
 
- c:= EColor.Red()  // Sets the variable c to Red (1)
+ c := EColor.Red()  // Sets the variable c to Red (1)
 
 Implementing String and Parse Methods
 
@@ -53,19 +53,11 @@ to its value (1). The code below demonstrates how to implement String and Parse 
  // String coverts a Color enum value to its equivalent "symbol" or
  // a string with an integer value if value has no matching symbol
  func (c Color) String() string {
-    // Calls each of Color’s methods that take no arguments & returns a Color
-    // If returned value matches c’s value, return method’s name
-    // Else , return c’s integer value as string
     return enum.StringInt(c, reflect.TypeOf(c))
  }
 
  // Parse sets c if s matches a symbol or is a number which can be parsed.
  func (c *Color) Parse(s string) error {
-    // Finds a Color method named s (optionally case-insensitive).
-    // If found, calls it and sets c to its value & returns
-    // Else if strict is true, returns error
-    // Else (strict is off), parses s as integer
-    //    If OK, set c to integer & returns; else returns error
     enumVal, err := enum.ParseInt(reflect.TypeOf(c), s, true, false)
     if enumVal != nil {
        *c = enumVal.(Color) // If no error, type assert to Color and set c
@@ -75,30 +67,34 @@ to its value (1). The code below demonstrates how to implement String and Parse 
 
 The great thing about these methods is that you can add, remove, or rename any of your enum type's symbol methods and
 these methods require no change at all; they just work! In addition, Parse optionally supports case-insensitive string
-matching and optionally support strict parsing. With strict parsing off (false), parsing a string of "123" will set the
+matching and optionally supports strict parsing. With strict parsing off (false), parsing a string of "123" will set the
 color variable to a value of 123 instead of returning an error. When String is called, if it cannot find a matching
-symbol method, it returns a string with the number "123". This allows round-tripping of data without loss if your
-code gets a unrecognized symbol value by way of parsing XML, JSON, or whatever.
+symbol method, it returns a string with the number "123". Unstrict parsing allows round-tripping of data (a number
+string from XML, JSON, or whatever) and being able to parse it. And then later, String converts it back to a number
+string without any loss of information.
 
 Getting all of an Enumerated Types's Symbols and Values
 
 This enum package offers a GetSymbols function that invokes your callback method once for each of your
 enumerated type's symbols. Your callback is called once per symbol and is passed the symbol's string and its value
 (as an interface{}); your callback can process these however it likes. Your callback returns false to continue
-enumerating symbols or it can return true to prematurely stop the enumeration if it has found whatevere it is looking
-for. Below is an example of code calling this package's GetSymbols method. The callback method simply displays each
+enumerating symbols or it can return true to prematurely stop the enumeration if it has found whatever it is looking
+for.
+
+Below is an example of code calling this package's GetSymbols method. The callback method simply displays each
 symbol's string along with its numeric value.
 
  enum.GetSymbols(reflect.TypeOf(EColor),
     func(enumSymbolName string, enumSymbolValue interface{}) (stop bool) {
-       printf("%-6s %d\n", enumSymbolName, enumSymbolValue)
+       fmt.Printf("%-6s %d\n", enumSymbolName, enumSymbolValue)
        return false
     })
 
 Working with Bit Flag Enumerated Types
 
-You can also define enums that consist of bit flags (symbols) that you can bitwise-OR together. Here is an example of
-an enumerated type that defines a set of potential access conditions:
+You can also define enumerated types that consist of bit flags (symbols) that you can bitwise-OR together. Note that
+the enumerated type underlying type MUST be an unsigned integer (like uint32). Here is an example of an enumerated
+type that defines a set of potential access conditions:
 
  var EAccess = Access(0).None() // Helper variable used by consuming code (improves cross-package consumption)
  type Access uint32             // I want Access enum variables to flags (MUST be an unsigned integer)
@@ -123,7 +119,7 @@ an enumerated type that defines a set of potential access conditions:
     return err
  }
 
-Here is code showing how to use this enumerated type:
+Here is code showing how to use String and Parse with this enumerated type:
 
  var a Access = EAccess.Write() | EAccess.Read()
  printf("%s\n", a) // Calls String() which returns "Read, Write"
