@@ -387,12 +387,12 @@ func ExampleStringEnum() {
 var EAccess = Access(0).None() // Helper variable used by consuming code (improves cross-package consumption)
 type Access uint32             // I want Access enum variables to flags (MUST be an unsigned integer)
 
-// Define Access' "symbols" and their values:
+// Define Access' "symbols" and their values (Note that each symbol is represented by a bit):
 func (Access) None() Access           { return Access(0x00) }
 func (Access) Read() Access           { return Access(0x01) }
 func (Access) Write() Access          { return Access(0x02) }
 func (Access) Execute() Access        { return Access(0x04) }
-func (a Access) IsSet(a2 Access) bool { return (uint32(a) & uint32(a2)) != 0 }
+func (a Access) IsSet(a2 Access) bool { return (uint32(a) & uint32(a2)) != 0 } // Optional helper method if you'd like
 
 // String coverts an Access enum value to its equivalent "symbols" (comma separated)
 func (a Access) String() string {
