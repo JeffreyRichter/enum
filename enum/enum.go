@@ -95,6 +95,7 @@ func StringUintFlags(intValue uint64, enumType reflect.Type, intBase int) string
 		if symbolNames.Len() > 0 {
 			symbolNames.WriteString(", ")
 		}
+		symbolNames.WriteString("0x")	// Prefix base-16 integer with "0x"
 		symbolNames.WriteString(strconv.FormatUint(intValue^bitsFound, intBase))
 	}
 	return symbolNames.String() // Returns matching symbol (if found)
@@ -106,13 +107,23 @@ func ParseInt(enumTypePtr reflect.Type, s string, caseInsensitive bool, strict b
 	if err == nil || strict {
 		return // If no error or strict parsing, return Parse's results
 	}
-	// strict is off: Try to parse s as a base 10 string of digits into a uint64 & return its value
-	intVal, parseErr := strconv.ParseUint(s, 0, int(enumTypePtr.Elem().Size())*8)
-	if parseErr == nil {
-		value := reflect.New(enumTypePtr.Elem()).Elem() // Create an enumType & get its underlying value
-		value.SetUint(intVal)                           // Set the underlying value to the parsed integer
-		enumVal = value.Interface()                     // Return the underlying value
-		err = nil                                       // If ParseUint returned no error, return intVal and err = nil
+
+	// strict is off: Try to parse s as a string of digits into a 64-bit integer & return its value
+	value := reflect.New(enumTypePtr.Elem()).Elem() // Create an enumType & get its underlying value
+	if kind := value.Kind(); kind == reflect.Int || kind == reflect.Int8 || kind == reflect.Int16 || kind == reflect.Int32 || kind == reflect.Int64 {
+		intVal, parseErr := strconv.ParseInt(s, 0, int(enumTypePtr.Elem().Size())*8)
+		if parseErr == nil {
+			value.SetInt(intVal)        // Set the underlying value to the parsed integer
+			enumVal = value.Interface() // Return the underlying value
+			err = nil                   // If ParseUint returned no error, return intVal and err = nil
+		}
+	} else {
+		intVal, parseErr := strconv.ParseUint(s, 0, int(enumTypePtr.Elem().Size())*8)
+		if parseErr == nil {
+			value.SetUint(intVal)       // Set the underlying value to the parsed integer
+			enumVal = value.Interface() // Return the underlying value
+			err = nil                   // If ParseUint returned no error, return intVal and err = nil
+		}
 	}
 	return
 }
@@ -135,7 +146,7 @@ func Parse(enumTypePtr reflect.Type, s string, caseInsensitive bool) (interface{
 		// The caller must convert this to their exact type
 		return method.Func.Call(args[:])[0].Convert(enumType).Interface(), nil
 	}
-	return nil, fmt.Errorf("couldn't parse %q into an instance of %q", s, enumType.Name())
+	return nil, fmt.Errorf("couldn't parse %q into a %q", s, enumType.Name())
 }
 
 // findMethod is an internal function that looks up an enum type's method (symbol) by name.
@@ -163,12 +174,12 @@ func ParseUintFlags(enumTypePtr reflect.Type, s string, caseInsensitive bool) (u
 		if err == nil {
 			val |= reflect.ValueOf(v).Uint() // Symbol found, OR its value
 		} else {
-			// strict is off: Try to parse f as a base 10 string of digits into a uint64 & return its value
+			// strict is off: Try to parse f as a string of digits into a uint64 & return its value
 			i, err := strconv.ParseUint(f, 0, int(enumTypePtr.Elem().Size())*8)
 			if err == nil {
 				val |= i // Successful parse, OR its value
 			} else {
-				return 0, fmt.Errorf("couldn't parse %q into an instance of %q", f, enumTypePtr.Elem().Name())
+				return 0, fmt.Errorf("couldn't parse %q into a %q", f, enumTypePtr.Elem().Name())
 			}
 		}
 	}
